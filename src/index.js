@@ -22,7 +22,7 @@ var Glu = function () {
       _seen[name] = true;
       var service         = _services[name],
           deps            = service.deps.map(resolve);
-          _resolved[name] = service.factory.apply(null, deps);
+      _resolved[name] = service.factory.apply(null, deps);
       return _resolved[name];
     }
   }
