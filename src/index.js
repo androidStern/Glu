@@ -1,7 +1,8 @@
 var Glu = function () {
   'use strict';
-  var _services = {};
-  var _resolved = {};
+  var _services = {},
+      _resolved = {},
+      _provided = {};
 
   function defineService (name, deps, factory) {
     delete _resolved[name];
@@ -11,29 +12,38 @@ var Glu = function () {
     };
   }
 
-  function define (name, deps, factory) {
-    if (arguments.length > 2) {
-      return defineService(name, deps, factory);
-    }
-    defineService(name, [], deps);
-  }
-
   function resolveService (name) {
-    if (_resolved.hasOwnProperty(name)) {
+    var _seen = {};
+    return resolve(name);
+    function resolve (name) {
+      if (_provided.hasOwnProperty(name)) { return _provided[name]; }
+      if (_resolved.hasOwnProperty(name)) { return _resolved[name]; }
+      if (_seen[name] === true) { throw 'Circular dependency detected resolving: ' + name; }
+      _seen[name] = true;
+      var service         = _services[name],
+          deps            = service.deps.map(resolve);
+          _resolved[name] = service.factory.apply(null, deps);
       return _resolved[name];
     }
-    var service = _services[name],
-        deps    = service.deps.map(resolveService);
-    return service.factory.apply(null, deps);
-  }
-
-  function inject (deps, callback) {
-    return callback.apply(null, deps.map(resolveService));
   }
   
   return {
-    define: define,
-    inject: inject
+    define: function (name, deps, factory) {
+      if (arguments.length > 2) {
+        return defineService(name, deps, factory);
+      }
+      defineService(name, [], deps);
+    },
+    inject: function (deps, callback) {
+      return callback.apply(null, deps.map(resolveService));
+    },
+    reset: function() {
+      _resolved = {};
+      _provided = {};
+    },
+    provide: function (name, obj) {
+      _provided[name] = obj;
+    }
   };
 };
 
